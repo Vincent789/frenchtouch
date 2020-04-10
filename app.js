@@ -4,117 +4,224 @@ import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader
 import { EffectComposer } from './node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from './node_modules/three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GUI } from './node_modules/three/examples/jsm/libs/dat.gui.module.js';
+import Stats from './node_modules/three/examples/jsm/libs/stats.module.js';
+import { Sky } from './node_modules/three/examples/jsm/objects/Sky.js';
+import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
+
+//variables intermédiaires three.js/vue.js
+			
+			var farness = 100;
+			
+			var container, camera, controls, scene, renderer, light, stats;
+
+			var water, sphere;
+
+			var sky, sunSphere;
+
+			init();
+			animate();
+			render();
+
+			function initScene() {
+
+				light = new THREE.DirectionalLight( 0xffffff, 0.8 );
+				scene.add( light );
+
+				// Water
+
+				var waterGeometry = new THREE.PlaneBufferGeometry( 10000, 10000 );
+
+				water = new Water(
+					waterGeometry,
+					{
+						textureWidth: 512,
+						textureHeight: 512,
+						waterNormals: new THREE.TextureLoader().load( './textures/waternormals.jpg', function ( texture ) {
+
+							texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+						} ),
+						alpha: 1.0,
+						sunDirection: light.position.clone().normalize(),
+						sunColor: 0xffffff,
+						waterColor: 0x001e0f,
+						distortionScale: 3.7,
+						fog: scene.fog !== undefined
+					}
+				);
 
 
-var farness = 0;
+				//permet de mettre l'eau à l'horizontale
+				water.rotation.x = - Math.PI / 2;
 
-var scene = new THREE.Scene();
+				scene.add( water );
 
+				// Add Sky
+				sky = new Sky();
+				sky.scale.setScalar( 450000 );
+				scene.add( sky );
 
+				// Add Sun Helper
+				sunSphere = new THREE.Mesh(
+					new THREE.SphereBufferGeometry( 20000, 16, 8 ),
+					new THREE.MeshBasicMaterial( { color: 0xffffff } )
+				);
+				sunSphere.position.y = - 700000;
+				sunSphere.visible = false;
+				scene.add( sunSphere );
 
-			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+				/// GUI
 
-			var renderer = new THREE.WebGLRenderer();
-			renderer.setSize( window.innerWidth, window.innerHeight );
-			document.body.appendChild( renderer.domElement );
-
-			var geometry = new THREE.BoxGeometry();
-			var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-			var cube = new THREE.Mesh( geometry, material );
-			scene.add( cube );
-
-
-			var geometry = new THREE.BoxGeometry();
-			var material = new THREE.MeshBasicMaterial( { color: 0xb234e0 } );
-			var cube2 = new THREE.Mesh( geometry, material );
-			scene.add( cube2 );
-			cube2.position.set(5, 0, 0);
-
-			const sun = new THREE.DirectionalLight(0xffffcc)
-			sun.position.set(0, 1, 0)
-			scene.add(sun)
-
-			let geo = new THREE.BoxBufferGeometry(10, 10, 10)
-			let mat = new THREE.MeshLambertMaterial({
-			    color: "red"
-			})
-			let mesh = new THREE.Mesh(geo, mat)
-			scene.add(mesh)
-
-			//Ajout d'une forêt
-
-			//tree geometry (two intersecting y-perpendicular triangles)
-			var triangle = new THREE.Shape();
-			triangle.moveTo(5, 0);
-			triangle.lineTo(0, 12);
-			triangle.lineTo(-5, 0);
-			triangle.lineTo(5, 0);
-			var tree_geometry1 = new THREE.ShapeGeometry(triangle);
-
-			var matrix = new THREE.Matrix4();
-			var tree_geometry2 = new THREE.ShapeGeometry(triangle);
-			tree_geometry2.applyMatrix(matrix.makeRotationY(Math.PI / 2));
+				var effectController = {
+					turbidity: 10,
+					rayleigh: 2,
+					mieCoefficient: 0.005,
+					mieDirectionalG: 0.8,
+					luminance: 1,
+					inclination: 0.49, // elevation / inclination
+					azimuth: 0.25, // Facing front,
+					sun: ! true
+				};
 
 
-			//tree material
-			var basic_material = new THREE.MeshBasicMaterial({color: 0x14190f});
-			basic_material.color = new THREE.Color(0x14190f);
-			basic_material.side = THREE.DoubleSide;
+				var distance = 400000;
+
+				function guiChanged() {
+
+					var uniforms = sky.material.uniforms;
+					uniforms[ "turbidity" ].value = effectController.turbidity;
+					uniforms[ "rayleigh" ].value = effectController.rayleigh;
+					uniforms[ "mieCoefficient" ].value = effectController.mieCoefficient;
+					uniforms[ "mieDirectionalG" ].value = effectController.mieDirectionalG;
+					uniforms[ "luminance" ].value = effectController.luminance;
+
+					var theta = Math.PI * ( effectController.inclination - 0.5 );
+					var phi = 2 * Math.PI * ( effectController.azimuth - 0.5 );
+
+					sunSphere.position.x = distance * Math.cos( phi );
+					sunSphere.position.y = distance * Math.sin( phi ) * Math.sin( theta );
+					sunSphere.position.z = distance * Math.sin( phi ) * Math.cos( theta );
+
+					sunSphere.visible = effectController.sun;
+
+					uniforms[ "sunPosition" ].value.copy( sunSphere.position );
+
+					renderer.render( scene, camera );
+
+				}
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				var gui = new GUI();
+
+				gui.add( effectController, "turbidity", 1.0, 20.0, 0.1 ).onChange( guiChanged );
+				gui.add( effectController, "rayleigh", 0.0, 4, 0.001 ).onChange( guiChanged );
+				gui.add( effectController, "mieCoefficient", 0.0, 0.1, 0.001 ).onChange( guiChanged );
+				gui.add( effectController, "mieDirectionalG", 0.0, 1, 0.001 ).onChange( guiChanged );
+				gui.add( effectController, "luminance", 0.0, 2 ).onChange( guiChanged );
+				gui.add( effectController, "inclination", 0, 1, 0.0001 ).onChange( guiChanged );
+				gui.add( effectController, "azimuth", 0, 1, 0.0001 ).onChange( guiChanged );
+				gui.add( effectController, "sun" ).onChange( guiChanged );
+
+				guiChanged();
 
 
-			//merge into giant geometry for max efficiency
-			var forest_geometry = new THREE.Geometry();
-			var dummy = new THREE.Mesh();
-			for (var i = 0; i < 1000; i++) 
-			{
-		    dummy.position.x = Math.random() * 1000 - 500;
-		    dummy.position.z = Math.random() * 1000 - 500;
-		    dummy.position.y = 0;
+				var uniforms = water.material.uniforms;
 
-		    dummy.geometry = tree_geometry1;
-		    THREE.GeometryUtils.merge(forest_geometry, dummy);
+				var folder = gui.addFolder( 'Water' );
+				folder.add( uniforms.distortionScale, 'value', 0, 8, 0.1 ).name( 'distortionScale' );
+				folder.add( uniforms.size, 'value', 0.1, 10, 0.1 ).name( 'size' );
+				folder.add( uniforms.alpha, 'value', 0.9, 1, .001 ).name( 'alpha' );
+				folder.open();
 
-		    dummy.geometry = tree_geometry2;
-		    THREE.GeometryUtils.merge(forest_geometry, dummy);
+				
+			}
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				//
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				//
+
+				scene = new THREE.Scene();
+
+				//
+
+				camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 1, 20000 );
+				camera.position.set( 30, 30, farness );
+
+
+				var helper = new THREE.GridHelper( 10000, 2, 0xffffff, 0xffffff );
+				scene.add( helper );
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render );
+				//controls.maxPolarAngle = Math.PI / 2;
+				controls.enableZoom = false;
+				controls.enablePan = false;
+
+				initScene();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				render();
+
+			}
+
+			function animate() {
+
+				camera.position.set( 30, 30, farness );
+				requestAnimationFrame( animate );
+				render();
+				stats.update();
+
+
+			}
+
+			function render() {
+
+				var time = performance.now() * 0.001;
+
+				water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
+
+				renderer.render( scene, camera );
+
+
 			}
 
 
-			//create mesh and add to scene
-			var forest_mesh = new THREE.Mesh(forest_geometry, basic_material);
-			scene.add(forest_mesh);
 
-			//texture infinie au sol
+//
 
-			let tex = new THREE.TextureLoader().load("https://upload.wikimedia.org/wikipedia/commons/4/4c/Grass_Texture.png")
-			tex.anisotropy = 32
-			tex.repeat.set(100, 100)
-			tex.wrapT = THREE.RepeatWrapping
-			tex.wrapS = THREE.RepeatWrapping
-			geo = new THREE.PlaneBufferGeometry(10000, 10000)
-			mat = new THREE.MeshLambertMaterial({
-			  map: tex
-			})
-			mesh = new THREE.Mesh(geo, mat)
-			mesh.position.set(0, -5, 0)
-			mesh.rotation.set(Math.PI / -2, 0, 0)
-			scene.add(mesh)
-			
-			camera.position.z += farness;
-
-			var animate = function () {
-				requestAnimationFrame( animate );
-
-				cube.rotation.x += 0.01;
-				cube.rotation.y += 0.01;
-				camera.position.z += farness;
-
-				renderer.render( scene, camera );
-			};
-
-			animate();
-
-
-
+//fonctions batardes
+function farness_imp() {
+	setTimeout(function(){ farness_increment=farness++ }, 1);
+	return farness;
+	console.log(farness);
+}
 
 new Vue({
 	el:'#vue-app',
@@ -122,8 +229,7 @@ new Vue({
 	},
 	methods:{
 		goforward: function(){
-			farness -= 0.1;
-			console.log(farness);
+			farness_imp();
 		}
 	}
 })
