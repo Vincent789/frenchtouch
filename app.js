@@ -1,5 +1,6 @@
 import * as Three from './node_modules/three/build/three.js';
-import { OrbitControls } from "./node_modules/three/examples/jsm/controls/OrbitControls.js";
+import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from './node_modules/three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 import { EffectComposer } from './node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from './node_modules/three/examples/jsm/postprocessing/RenderPass.js';
@@ -13,11 +14,24 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 			
 			var farness = 100;
 			
-			var container, camera, controls, scene, renderer, light, stats;
+
+
+
+
+			var container, camera, controls, scene, renderer, light, stats, transform, composer;
 
 			var water, sphere;
 
 			var sky, sunSphere;
+
+			var loader = new GLTFLoader();
+
+			var params = {
+				exposure: 1,
+				bloomStrength: 0,
+				bloomThreshold: 0,
+				bloomRadius: 0
+			};
 
 			init();
 			animate();
@@ -25,9 +39,45 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 			function initScene() {
 
+				
 				light = new THREE.DirectionalLight( 0xffffff, 0.8 );
 				scene.add( light );
 
+
+				// Load a glTF resource
+				loader.load(
+					// resource URL
+					'yacht/scene.gltf',
+					// called when the resource is loaded
+					function ( gltf ) {
+
+						scene.add( gltf.scene );
+
+						gltf.animations; // Array<THREE.AnimationClip>
+						gltf.scene; // THREE.Group
+						gltf.scenes; // Array<THREE.Group>
+						gltf.cameras; // Array<THREE.Camera>
+						gltf.asset; // Object
+
+							},
+							// called while loading is progressing
+							function ( xhr ) {
+
+								console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+							},
+							// called when loading has errors
+							function ( error ) {
+
+								console.log( 'An error happened' );
+
+							}
+				    );
+
+				//function gltfPosition(gltfpos){
+					//gltfpos.getWorldPosition () : gltfposPosition;
+					//console.log(gltfposPosition);
+				//};
 				// Water
 
 				var waterGeometry = new THREE.PlaneBufferGeometry( 10000, 10000 );
@@ -84,6 +134,16 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 					sun: ! true
 				};
 
+				var renderScene = new RenderPass( scene, camera );
+
+				var bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
+				bloomPass.threshold = params.bloomThreshold;
+				bloomPass.strength = params.bloomStrength;
+				bloomPass.radius = params.bloomRadius;
+
+				composer = new EffectComposer( renderer );
+				composer.addPass( renderScene );
+				composer.addPass( bloomPass );
 
 				var distance = 400000;
 
@@ -124,13 +184,41 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 				gui.add( effectController, "inclination", 0, 1, 0.0001 ).onChange( guiChanged );
 				gui.add( effectController, "azimuth", 0, 1, 0.0001 ).onChange( guiChanged );
 				gui.add( effectController, "sun" ).onChange( guiChanged );
+				
+
+				gui.add( params, 'exposure', 0.1, 2 ).onChange( function ( value ) {
+
+				renderer.toneMappingExposure = Math.pow( value, 4.0 );
+
+				} );
+
+			    gui.add( params, 'bloomThreshold', 0.0, 1.0 ).onChange( function ( value ) {
+
+				bloomPass.threshold = Number( value );
+
+			    } );
+
+			    gui.add( params, 'bloomStrength', 0.0, 3.0 ).onChange( function ( value ) {
+
+				bloomPass.strength = Number( value );
+
+			    } );
+
+			    gui.add( params, 'bloomRadius', 0.0, 1.0 ).step( 0.01 ).onChange( function ( value ) {
+
+				bloomPass.radius = Number( value );
+
+			    } );
+
 
 				guiChanged();
 
 
 				var uniforms = water.material.uniforms;
 
+				//pour ajouter un sous dossier de gui
 				var folder = gui.addFolder( 'Water' );
+
 				folder.add( uniforms.distortionScale, 'value', 0, 8, 0.1 ).name( 'distortionScale' );
 				folder.add( uniforms.size, 'value', 0.1, 10, 0.1 ).name( 'size' );
 				folder.add( uniforms.alpha, 'value', 0.9, 1, .001 ).name( 'alpha' );
@@ -154,14 +242,21 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 				scene = new THREE.Scene();
 
-				//
-
+				//nouvelle camera
 				camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 1, 20000 );
+				//nouveaux controls orbitcontrols
+				var controls = new OrbitControls( camera, renderer.domElement );
+				//on positionne la camera, je laisse farness pour tester depuis les éléments vue
 				camera.position.set( 30, 30, farness );
+				controls.update();
 
+				//le helper sert à insérer ici 2 lignes qui se croisent au 0
+				//var helper = new THREE.GridHelper( 10000, 2, 0xffffff, 0xffffff );
+				//scene.add( helper );
 
-				var helper = new THREE.GridHelper( 10000, 2, 0xffffff, 0xffffff );
-				scene.add( helper );
+				//le helper sert à insérer une grille simple ici
+				//scene.add( new THREE.GridHelper( 10000, 100 ) );
+
 
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
@@ -193,21 +288,28 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 			function animate() {
 
-				camera.position.set( 30, 30, farness );
+
 				requestAnimationFrame( animate );
 				render();
 				stats.update();
-
-
+				//farness+=1;
+				//camera.position.set( 30, 30, farness );
+				// required if controls.enableDamping or controls.autoRotate are set to true
+		
 			}
 
 			function render() {
 
+				
+
 				var time = performance.now() * 0.001;
+
+				camera.position.set( 30, 30, farness );
 
 				water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
 
-				renderer.render( scene, camera );
+
+				composer.render( scene, camera );
 
 
 			}
@@ -217,11 +319,11 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 //
 
 //fonctions batardes
-function farness_imp() {
-	setTimeout(function(){ farness_increment=farness++ }, 1);
+/*function farness_imp() {
+	setTimeout(function(){ farness+10 }, 1);
 	return farness;
 	console.log(farness);
-}
+}*/
 
 new Vue({
 	el:'#vue-app',
@@ -229,7 +331,7 @@ new Vue({
 	},
 	methods:{
 		goforward: function(){
-			farness_imp();
+
 		}
 	}
 })
