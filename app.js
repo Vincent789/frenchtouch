@@ -1,3 +1,4 @@
+
 import * as Three from './node_modules/three/build/three.js';
 import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from './node_modules/three/examples/jsm/controls/TransformControls.js';
@@ -12,12 +13,6 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 //variables intermédiaires three.js/vue.js
 			
-			var farness = 100;
-			
-
-
-
-
 			var container, camera, controls, scene, renderer, light, stats, transform, composer;
 
 			var water, sphere;
@@ -47,39 +42,38 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 				// Load a glTF resource
 				loader.load(
 					// resource URL
-					'yacht/scene.gltf',
+					'yacht/scene.glb',
 					// called when the resource is loaded
 					function ( gltf ) {
 
 						scene.add( gltf.scene );
-
 						gltf.animations; // Array<THREE.AnimationClip>
 						gltf.scene; // THREE.Group
 						gltf.scenes; // Array<THREE.Group>
 						gltf.cameras; // Array<THREE.Camera>
 						gltf.asset; // Object
 
-							},
-							// called while loading is progressing
-							function ( xhr ) {
+						var model;
+						model = gltf.scene;
+						model.position.y = 12;
+					},
 
-								console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+					// called while loading is progressing
+					function ( xhr ) {
 
-							},
-							// called when loading has errors
-							function ( error ) {
+							console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 
-								console.log( 'An error happened' );
+					},
+					
+					// called when loading has errors
+					function ( error ) {
 
-							}
-				    );
+							console.log( 'An error happened' );
 
-				//function gltfPosition(gltfpos){
-					//gltfpos.getWorldPosition () : gltfposPosition;
-					//console.log(gltfposPosition);
-				//};
-				// Water
+					}
+				);
 
+				
 				var waterGeometry = new THREE.PlaneBufferGeometry( 10000, 10000 );
 
 				water = new Water(
@@ -247,7 +241,7 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 				//nouveaux controls orbitcontrols
 				var controls = new OrbitControls( camera, renderer.domElement );
 				//on positionne la camera, je laisse farness pour tester depuis les éléments vue
-				camera.position.set( 30, 30, farness );
+				camera.position.set( 30, 30, 30 );
 				controls.update();
 
 				//le helper sert à insérer ici 2 lignes qui se croisent au 0
@@ -279,7 +273,6 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
-
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
 				render();
@@ -290,10 +283,11 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 
 				requestAnimationFrame( animate );
+
 				render();
+
 				stats.update();
-				//farness+=1;
-				//camera.position.set( 30, 30, farness );
+
 				// required if controls.enableDamping or controls.autoRotate are set to true
 		
 			}
@@ -304,7 +298,6 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 				var time = performance.now() * 0.001;
 
-				camera.position.set( 30, 30, farness );
 
 				water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
 
@@ -325,15 +318,38 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 	console.log(farness);
 }*/
 
-new Vue({
-	el:'#vue-app',
+
+
+
+
+
+
+var one = new Vue({
+	el:'#vue-app-one',
 	data:{
 	},
 	methods:{
-		goforward: function(){
+	},
+	computed:{
+	}
+})
 
+var two = new Vue({
+	el:'#vue-app-two',
+	data:{
+		title: '3d',
+	},
+	methods:{
+		changeTitle:function(){
+			one.title = "Title changed"; 
+		}
+	},
+	computed:{
+		greet:function(){
+			return 'Hello from app Two :)';
 		}
 	}
 })
 
+two.title = "changed from outside";
 
