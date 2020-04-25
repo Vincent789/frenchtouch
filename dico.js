@@ -54,8 +54,7 @@
 				//le helper sert à insérer une grille simple ici
 				scene.add( new THREE.GridHelper( 10000, 100 ) );
 
-// Ajouter de l'eau sur une surface plane
-				
+				// Ajouter de l'eau sur une surface plane
 				//déclarer une surface plane de 10000 par 10000 (10000 quoi ? pixels j'imagine)
 				var waterGeometry = new THREE.PlaneBufferGeometry( 10000, 10000 );
 				// Les surfaces planes sont toujours insérées verticalement
