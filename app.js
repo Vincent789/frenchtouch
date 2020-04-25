@@ -25,6 +25,8 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 			var container, stats;
 			var camera, scene, renderer, light;
 			var controls, water, sphere;
+			//terrain
+			var plane, geometry, xZoom, yZoom, noiseStrength, simplex;
 
 			init();
 			animate();
@@ -79,7 +81,71 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 				water.rotation.x = - Math.PI / 2;
 
-				scene.add( water );
+
+		
+
+				//terrain
+
+
+				function setupTerrain() {
+				  setupNoise();
+				  setupPlane();
+				}
+
+
+				function setupNoise() {
+				  // By zooming y more than x, we get the
+				  // appearence of flying along a valley
+				  xZoom = 6;
+				  yZoom = 18;
+				  noiseStrength = 1.5;
+				  simplex = new SimplexNoise();
+				}
+
+				function setupPlane() {
+				  let side = 120;
+				  geometry = new THREE.PlaneGeometry(40, 40, side, side);
+				  let material = new THREE.MeshStandardMaterial({
+				    roughness: 0.8,
+				    color: new THREE.Color(0x00c500),
+				  });
+				  plane = new THREE.Mesh(geometry, material);
+				  plane.castShadow = true;
+				  plane.receiveShadow = true;
+
+				  scene.add(plane);
+				  plane.rotation.x = - Math.PI / 2; //on rotate la montagne de bruit
+				}
+
+				function draw() {
+				  requestAnimationFrame(draw);
+				  let offset = Date.now() * 0.0004;
+				  adjustVertices(offset);
+					adjustCameraPos(offset);
+				  renderer.render(scene, camera);
+				}
+
+				function adjustVertices(offset) {
+				  for (let i = 0; i < plane.geometry.vertices.length; i++) {
+				    let vertex = plane.geometry.vertices[i];
+				    let x = vertex.x / xZoom;
+				    let y = vertex.y / yZoom;
+				    let noise = simplex.noise2D(x, y + offset) * noiseStrength; 
+				    vertex.z = noise;
+				  }
+				  geometry.verticesNeedUpdate = true;
+				  geometry.computeVertexNormals();
+				}
+
+				function adjustCameraPos(offset) {  
+				  //let x = camera.position.x / xZoom;
+				  //let y = camera.position.y / yZoom;
+				  //let noise = simplex.noise2D(x, y + offset) * noiseStrength + 1.5; 
+				  //camera.position.z = noise;
+				}
+				
+				setupTerrain();
+				draw();
 
 				// Skybox
 
@@ -142,7 +208,6 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 				}
 
 				geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
-
 				var material = new THREE.MeshStandardMaterial( {
 					vertexColors: true,
 					roughness: 0.0,
@@ -151,8 +216,8 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 					side: THREE.DoubleSide
 				} );
 
-				sphere = new THREE.Mesh( geometry, material );
-				scene.add( sphere );
+				//sphere = new THREE.Mesh( geometry, material );
+				//scene.add( sphere );
 
 				//
 
@@ -202,6 +267,7 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 			function animate() {
 
+
 				requestAnimationFrame( animate );
 				render();
 				stats.update();
@@ -212,9 +278,9 @@ import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
 
 				var time = performance.now() * 0.001;
 
-				sphere.position.y = Math.sin( time ) * 20 + 5;
-				sphere.rotation.x = time * 0.5;
-				sphere.rotation.z = time * 0.51;
+				//sphere.position.y = Math.sin( time ) * 20 + 5;
+				//sphere.rotation.x = time * 0.5;
+				//sphere.rotation.z = time * 0.51;
 
 				water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
 
