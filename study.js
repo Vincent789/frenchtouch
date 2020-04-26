@@ -1,24 +1,10 @@
-// Importer three
-import * as Three from './node_modules/three/build/three.js';
-// Orbitcontrols permet de tourner autour de l'objet avec la souris
-import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
-// TransformControls permet de déplacer un objet avec la souris
-import { TransformControls } from './node_modules/three/examples/jsm/controls/TransformControls.js';
-//GLTFLoader permet de lire des modèles GLTF (texture non intégrée) et GLB (texture intégrée)
-import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
-//élméments de post processing
-import { EffectComposer } from './node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from './node_modules/three/examples/jsm/postprocessing/RenderPass.js';
-//ajoute un halo de lumière
-import { UnrealBloomPass } from './node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
-//ajoute des contrôles utilisateur
-import { GUI } from './node_modules/three/examples/jsm/libs/dat.gui.module.js';
-//ajoute des stats de rendu (en fps par exemple)
-import Stats from './node_modules/three/examples/jsm/libs/stats.module.js';
-//module ciel
-import { Sky } from './node_modules/three/examples/jsm/objects/Sky.js';
-//module eau
-import { Water } from './node_modules/three/examples/jsm/objects/Water.js';
+/*
+  Johan Karlsson (DonKarlssonSan) 2018
+  Referencing: 
+   * three.js
+   * Noise lib
+   * OrbitControls
+*/
 
 let scene;
 let camera;
@@ -29,23 +15,15 @@ let geometry;
 let xZoom;
 let yZoom;
 let noiseStrength;
-let controls;
-let container;
-let guiParameters;
-var parameters = {
-	distance: 400,
-	inclination: 0.49,
-	azimuth: 0.205
-};
 
 function setup() {
   setupNoise();
   setupScene();
   setupCamera();
+  setupRenderer();
   setupPlane();
   setupLights();
   setupEventListeners();
-  addGui();
 }
 
 function setupNoise() {
@@ -58,14 +36,7 @@ function setupNoise() {
 }
 
 function setupScene() {
-    //on crée un container, celui déclaré dans le html #game-container
-	container = document.getElementById( 'home-game-container' );
-	//
-	renderer = new THREE.WebGLRenderer();
-	renderer.setPixelRatio( window.devicePixelRatio );
-	renderer.setSize( window.innerWidth, window.innerHeight );
-	container.appendChild( renderer.domElement );
-  	scene = new THREE.Scene();
+  scene = new THREE.Scene();
 }
 
 function setupCamera() {
@@ -74,7 +45,16 @@ function setupCamera() {
   camera.position.x = 0;
   camera.position.y = -20;
   camera.position.z = 10;
-  controls = new OrbitControls( camera, renderer.domElement );
+  
+  let controls = new THREE.OrbitControls(camera);
+}
+
+function setupRenderer() {
+  renderer = new THREE.WebGLRenderer({ 
+    antialias: true 
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
 }
 
 function setupPlane() {
@@ -116,10 +96,10 @@ function draw() {
   let offset = Date.now() * 0.0004;
   adjustVertices(offset);
 	//adjustCameraPos(offset);
-  controls.update();
   renderer.render(scene, camera);
 }
 
+https://github.com/gre/smoothstep
 function smoothstep (min, max, value) {
   var x = Math.max(0, Math.min(1, (value-min)/(max-min)));
   return x*x*(3 - 2*x);
@@ -143,23 +123,12 @@ function adjustVertices(offset) {
   geometry.computeVertexNormals();
 }
 
-function addGui() {
-	var gui = new GUI();
-
-	var folder = gui.addFolder( 'Sky' );
-	folder.add( parameters, 'inclination', 0, 0.5, 0.0001 ).onChange( console.log('hello') );
-	folder.add( parameters, 'azimuth', 0, 1, 0.0001 ).onChange( console.log('hello') );
-	folder.open();
-}
-
-
 function adjustCameraPos(offset) {  
   let x = camera.position.x / xZoom;
   let y = camera.position.y / yZoom;
   let noise = simplex.noise2D(x, y + offset) * noiseStrength + 1.5; 
   camera.position.z = noise;
 }
-
 
 setup();
 draw();
