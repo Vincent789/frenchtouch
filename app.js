@@ -158,13 +158,31 @@ function addGui() {
 	var gui = new GUI();
 
 	var folder = gui.addFolder( 'Terrain' );
-	gui.add( parameters, 'var1', 1, 10 ).onChange( function ( value ) {
+	gui.add( parameters, 'var1', -100, 100 ).onChange( function ( value ) {
 
-				var1++;
-				console.log(var1);
+			var1 = Number( value );
 
 	} );
+	gui.add( parameters, 'var2', -100, 100 ).onChange( function ( value ) {
 
+			var2 = Number( value );
+
+	} );
+	gui.add( parameters, 'var3', -100, 100 ).onChange( function ( value ) {
+
+			var3 = Number( value );
+
+	} );
+	gui.add( parameters, 'var4', -100, 100 ).onChange( function ( value ) {
+
+			var4 = Number( value );
+
+	} );
+	gui.add( parameters, 'var5', -100, 100 ).onChange( function ( value ) {
+
+			var5 = Number( value );
+
+	} );
 	folder.open();
 }
 
