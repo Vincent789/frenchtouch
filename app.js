@@ -32,11 +32,22 @@ let noiseStrength;
 let controls;
 let container;
 let guiParameters;
+
+var var1 = 5;
+var var2 = 10;
+var var3 = 1.5;
+var var4 = -5;
+var var5 = -10;
+
 var parameters = {
-	distance: 400,
-	inclination: 0.49,
-	azimuth: 0.205
+	 var1,
+	 var2,
+	 var3,
+	 var4,
+	 var5
 };
+
+
 
 function setup() {
   setupNoise();
@@ -133,10 +144,10 @@ function adjustVertices(offset) {
     let noise = simplex.noise2D(x, y + offset) * noiseStrength; 
     
     let vX = vertex.x;
-    let ss = smoothstep(5, 10, vX);
+    let ss = smoothstep(var1, var2, vX);
     
-    let shelf = -1.5;
-    let shelfSS = smoothstep(-5, -10, vX);
+    let shelf = var3;
+    let shelfSS = smoothstep(var4, var5, vX);
     vertex.z = noise * ss + (shelf * shelfSS);
   }
   geometry.verticesNeedUpdate = true;
@@ -146,9 +157,14 @@ function adjustVertices(offset) {
 function addGui() {
 	var gui = new GUI();
 
-	var folder = gui.addFolder( 'Sky' );
-	folder.add( parameters, 'inclination', 0, 0.5, 0.0001 ).onChange( console.log('hello') );
-	folder.add( parameters, 'azimuth', 0, 1, 0.0001 ).onChange( console.log('hello') );
+	var folder = gui.addFolder( 'Terrain' );
+	gui.add( parameters, 'var1', 1, 10 ).onChange( function ( value ) {
+
+				var1++;
+				console.log(var1);
+
+	} );
+
 	folder.open();
 }
 
