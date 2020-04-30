@@ -333,7 +333,7 @@
 
 				//on crée un container, celui déclaré dans le html #game-container
 
-				container = document.getElementById( 'game-container' );
+		    	container = document.getElementById( 'game-container' );
 
 				//
 

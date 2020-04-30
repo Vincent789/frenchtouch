@@ -25,6 +25,7 @@ let camera;
 let renderer;
 let simplex;
 let plane;
+let beach;
 let geometry;
 let xZoom;
 let yZoom;
@@ -35,7 +36,7 @@ let guiParameters;
 
 var var1 = 5;
 var var2 = 10;
-var var3 = 1.5;
+var var3 = -1;
 var var4 = -5;
 var var5 = -10;
 
@@ -54,6 +55,8 @@ function setup() {
   setupScene();
   setupCamera();
   setupPlane();
+  setupRoad();
+  setupWater();
   setupLights();
   setupEventListeners();
   addGui();
@@ -90,7 +93,7 @@ function setupCamera() {
 
 function setupPlane() {
   let side = 120;
-  geometry = new THREE.PlaneGeometry(40, 40, side, side);
+  geometry = new THREE.PlaneGeometry(40, 70, side, side);
   let material = new THREE.MeshStandardMaterial({
     roughness: 0.8,
     color: new THREE.Color(0x00c500),
@@ -100,6 +103,47 @@ function setupPlane() {
   plane.receiveShadow = true;
 
   scene.add(plane);
+}
+
+function setupRoad() {
+	//Animation
+	// instantiate a loader
+	var loader = new THREE.AnimationLoader();
+
+	// load a resource
+	loader.load(
+		// resource URL
+		'json/data.json',
+
+		// onLoad callback
+		function ( animations ) {
+			// animations is an array of AnimationClips
+		},
+
+		// onProgress callback
+		function ( xhr ) {
+			console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+		},
+
+		// onError callback
+		function ( err ) {
+			console.log( 'An error happened' );
+		}
+	);
+	//Plane
+	var geometry = new THREE.PlaneGeometry( 5, 70, 32 );
+	var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+	var plane = new THREE.Mesh( geometry, material );
+	plane.position.set(0, 0, 0.1);
+	scene.add( plane );
+}
+
+function setupWater() {
+	var geometry = new THREE.PlaneGeometry( 40, 70, 32 );
+	var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+	var plane = new THREE.Mesh( geometry, material );
+	plane.position.set(-30, 0, -0.99);
+	scene.add( plane );
 }
 
 function setupLights() {

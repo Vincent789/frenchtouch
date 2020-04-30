@@ -35,9 +35,9 @@ function setupNoise() {
   simplex = new SimplexNoise();
 }
 
-function setupScene() {
+/*function setupScene() {
   scene = new THREE.Scene();
-}
+}*/
 
 function setupCamera() {
   let res = window.innerWidth / window.innerHeight;
