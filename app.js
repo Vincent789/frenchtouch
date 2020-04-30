@@ -26,6 +26,11 @@ let renderer;
 let simplex;
 let plane;
 let beach;
+let water;
+let sky;
+let sunSphere;
+let light;
+let stats;
 let geometry;
 let xZoom;
 let yZoom;
@@ -48,15 +53,13 @@ var parameters = {
 	 var5
 };
 
-
-
 function setup() {
   setupNoise();
   setupScene();
   setupCamera();
   setupPlane();
   setupRoad();
-  setupWater();
+  setUpRenderRoom();
   setupLights();
   setupEventListeners();
   addGui();
@@ -86,8 +89,8 @@ function setupCamera() {
   let res = window.innerWidth / window.innerHeight;
   camera = new THREE.PerspectiveCamera(75, res, 0.1, 1000);
   camera.position.x = 0;
-  camera.position.y = -20;
-  camera.position.z = 10;
+  camera.position.y = 4;
+  camera.position.z = 35;
   controls = new OrbitControls( camera, renderer.domElement );
 }
 
@@ -101,7 +104,7 @@ function setupPlane() {
   plane = new THREE.Mesh(geometry, material);
   plane.castShadow = true;
   plane.receiveShadow = true;
-
+  plane.rotation.x = - Math.PI / 2;
   scene.add(plane);
 }
 
@@ -134,26 +137,158 @@ function setupRoad() {
 	var geometry = new THREE.PlaneGeometry( 5, 70, 32 );
 	var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
 	var plane = new THREE.Mesh( geometry, material );
-	plane.position.set(0, 0, 0.1);
+  plane.rotation.x = - Math.PI / 2;
+	plane.position.set(0, .1, 0);
 	scene.add( plane );
 }
 
-function setupWater() {
-	var geometry = new THREE.PlaneGeometry( 40, 70, 32 );
-	var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
-	var plane = new THREE.Mesh( geometry, material );
-	plane.position.set(-30, 0, -0.99);
-	scene.add( plane );
+function setUpRenderRoom() {
+
+        light = new THREE.DirectionalLight( 0xffffff, 0.8 );
+        scene.add( light );
+
+        // Water
+
+        var waterGeometry = new THREE.PlaneBufferGeometry( 40, 70 );
+
+        water = new Water(
+          waterGeometry,
+          {
+            textureWidth: 512,
+            textureHeight: 512,
+            waterNormals: new THREE.TextureLoader().load( 'textures/waternormals.jpg', function ( texture ) {
+
+              texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+            } ),
+            alpha: 1.0,
+            sunDirection: light.position.clone().normalize(),
+            sunColor: 0xde6910,
+            waterColor: 0x001e0f,
+            distortionScale: 3.7,
+            fog: scene.fog !== undefined
+          }
+        );
+        water.position.set(-30,-0.99,0);
+        water.rotation.x = - Math.PI / 2;
+        scene.add( water );
+
+        // Skybox
+
+        // Add Sky
+        sky = new Sky();
+        sky.scale.setScalar( 450000 );
+        scene.add( sky );
+
+        // Add Sun Helper
+        sunSphere = new THREE.Mesh(
+          new THREE.SphereBufferGeometry( 20000, 16, 8 ),
+          new THREE.MeshBasicMaterial( { color: 0xffffff } )
+        );
+        sunSphere.position.y = - 700000;
+        sunSphere.visible = false;
+        scene.add( sunSphere );
+
+        var effectController = {
+          turbidity: 10,
+          rayleigh: 2,
+          mieCoefficient: 0.005,
+          mieDirectionalG: 0.8,
+          luminance: 1,
+          inclination: 0.49, // elevation / inclination
+          azimuth: 0.25, // Facing front,
+          sun: ! true
+        }
+
+        var distance = 400000;
+
+        function guiChanged() {
+
+          var uniforms = sky.material.uniforms;
+          uniforms[ "turbidity" ].value = effectController.turbidity;
+          uniforms[ "rayleigh" ].value = effectController.rayleigh;
+          uniforms[ "mieCoefficient" ].value = effectController.mieCoefficient;
+          uniforms[ "mieDirectionalG" ].value = effectController.mieDirectionalG;
+          uniforms[ "luminance" ].value = effectController.luminance;
+
+          var theta = Math.PI * ( effectController.inclination - 0.5 );
+          var phi = 2 * Math.PI * ( effectController.azimuth - 0.5 );
+
+          sunSphere.position.x = distance * Math.cos( phi );
+          sunSphere.position.y = distance * Math.sin( phi ) * Math.sin( theta );
+          sunSphere.position.z = distance * Math.sin( phi ) * Math.cos( theta );
+
+          sunSphere.visible = effectController.sun;
+
+          uniforms[ "sunPosition" ].value.copy( sunSphere.position );
+
+          renderer.render( scene, camera );
+
+        }
+
+        //
+
+        var geometry = new THREE.IcosahedronBufferGeometry( 20, 1 );
+        var count = geometry.attributes.position.count;
+
+        var colors = [];
+        var color = new THREE.Color();
+
+        for ( var i = 0; i < count; i += 3 ) {
+
+          color.setHex( Math.random() * 0xffffff );
+
+          colors.push( color.r, color.g, color.b );
+          colors.push( color.r, color.g, color.b );
+          colors.push( color.r, color.g, color.b );
+
+        }
+
+        geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
+
+        var material = new THREE.MeshStandardMaterial( {
+          vertexColors: true,
+          roughness: 0.0,
+          flatShading: true,
+          side: THREE.DoubleSide
+        } );
+
+        stats = new Stats();
+        container.appendChild( stats.dom );
+
+        // GUI
+
+        var gui = new GUI();
+
+
+        var uniforms = water.material.uniforms;
+
+        var folder = gui.addFolder( 'Water' );
+        folder.add( uniforms.distortionScale, 'value', 0, 8, 0.1 ).name( 'distortionScale' );
+        folder.add( uniforms.size, 'value', 0.1, 10, 0.1 ).name( 'size' );
+        folder.add( uniforms.alpha, 'value', 0.9, 1, .001 ).name( 'alpha' );
+        folder.open();
+
+        var foldersky = gui.addFolder( 'Sky' );
+        foldersky.add( effectController, "turbidity", -100, 100.0, 0.1 ).onChange( guiChanged );
+        foldersky.add( effectController, "rayleigh", -10, 10, 0.001 ).onChange( guiChanged );
+        foldersky.add( effectController, "mieCoefficient", -10, 10, 0.001 ).onChange( guiChanged );
+        foldersky.add( effectController, "mieDirectionalG", -10, 10, 0.001 ).onChange( guiChanged );
+        foldersky.add( effectController, "luminance", 0.0, 2 ).onChange( guiChanged );
+        foldersky.add( effectController, "inclination", -1, 1, 0.0001 ).onChange( guiChanged );
+        foldersky.add( effectController, "azimuth", -1, 1, 0.0001 ).onChange( guiChanged );
+        foldersky.add( effectController, "sun" ).onChange( guiChanged );
+
+        guiChanged();
+
+
+      
+
+        window.addEventListener( 'resize', onWindowResize, false );
 }
 
 function setupLights() {
-  let ambientLight = new THREE.AmbientLight(0x0c0c0c);
-  scene.add(ambientLight);
-  
-  let spotLight = new THREE.SpotLight(0xcccccc);
-  spotLight.position.set(-30, 60, 60);
-  spotLight.castShadow = true;
-  scene.add(spotLight);
+
 }
 
 function setupEventListeners() {
@@ -172,6 +307,7 @@ function draw() {
   adjustVertices(offset);
 	//adjustCameraPos(offset);
   controls.update();
+  water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
   renderer.render(scene, camera);
 }
 
